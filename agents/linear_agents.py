@@ -1,92 +1,108 @@
 import numpy as np
 from constants import *
+from features import get_x_from_s
+#import base_agents
+from agents import base_agents 
 
-class FeatAgent:
-    def __init__(self, env, learn, features, n_actions= 3, alpha=0.1, epsilon=0.1, gamma=0.9):
-        self.env = env
-        self.learn = learn
-        self.learn.set_agent(self)
-        self.features = features
-        self.n_features = self.count_elements_of_feats()#len(features)self.
-        print('self.n_features')
-        print(self.n_features)
+
+class REINFORCEAgent(base_agents.BaseAgent):
+    def __init__(self, env, learn, features, n_actions= 3, alpha=0.1, dec_alpha=1, min_alpha=0.01, epsilon=0.1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.9):
+        super(FeatAgent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma)
         
-        self.n_actions = n_actions
-        self.current_action = None
-        self.actions_counter = np.array([0 for _ in range(self.n_actions)])
-        
-        self.w = np.random.rand(self.n_actions, self.n_features)
-        self.current_qs = None
-        
-        self.alpha = alpha
-        self.epsilon = epsilon
-        self.gamma = gamma
+        #se multiplica el número de las features por el n_actions para implementar stack features 
+        self.n_features *= self.n_actions 
+        self.theta = np.random.rand(self.n_features)
+        self.rewards = []
     
-    def count_elements_of_feats(self):
-        s = np.zeros((self.env.rows, self.env.cols))
-        feat_counter = 0
-        for f in self.features:
-            res = f(s, self.env)
-            if isinstance(res, int):
-                feat_counter +=1
-            else:
-                feat_counter += len(res)
-        
-        return feat_counter
+    def update_w(self, state, action, next_state, reward, done):
+        self.rewards.append(reward)
+        x = get_x_from_s(state, self.features, self.env)
+        x_sa = np.dot(x, self.theta[len(x)*action:len(x)*action + len(x)])
+        sum_all_xs = np.dot(np.tile(x, self.n_actions), self.theta)
+
+        self.theta += self.alpha*(x_sa - sum_all_xs)
+    
+    def get_agent_action(self, state):
+        pass
+
+
+class FeatAgent(base_agents.BaseAgent):
+    def __init__(self, env, learn, features, n_actions= 3, alpha=0.1, dec_alpha=1, min_alpha=0.01, epsilon=0.1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.9):
+        super(FeatAgent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma)
+        self.w = np.random.rand(self.n_actions, self.n_features)/(self.n_actions*self.n_features)#np.zeros((self.n_actions, self.n_features))#
+
         
     def count_action(self, action):
         self.actions_counter[action] += 1
-        
-    def get_x_from_s(self, s):
-        #f_same_col = get_if_x_in_same_col_as_y(s, env.agent_number, env.block_number)
-        #feats = np.array([f(s, self.env) for f in self.features])))
-        feats = []
-        for f in self.features:
-            res = f(s, self.env)
-            if isinstance(res, np.ndarray):
-                #res = *res
-                feats += list(res)
-            else:
-                feats.append(res)
-        feats = np.array(feats)
-        #print('fffeats: {}'.format(feats))
-        return feats#np.array([1, f_same_col])
 
     def calculate_v(self, s):
-        x = self.get_x_from_s(s, self.env)
+        x = get_x_from_s(s, self.features, self.env)
         
         
         return np.dot(self.w, x)
 
-    def update_w(self, grid, action, next_grid, r, done):
-        
-        x = self.get_x_from_s(grid)
+    def update_w(self, state, action, next_state, reward, done):
+        #print('update_w state before')
+        #print(state)
+        x = get_x_from_s(state, self.features, self.env)
+
+        #print('update_w state after')
+        #print(state)
         #print('x: {}'.format(x))
         #v_next = self.calculate_v(next_grid, self.env)
         #v = self.calculate_v(grid, self.env)
-        delta = self.learn.get_delta(grid, next_grid, r, done)
+        #print('ESTOY ANTES O DESPUÉS DEL PRINT DEL ACTION 1')
+        delta = self.learn.get_delta(state, next_state, reward, done)
+        #print('ESTOY ANTES O DESPUÉS DEL PRINT DEL ACTION 2')
 #         print('self.w')
 #         print(self.w)
 #         print('self.w[agent.current_action]')
 #         print(self.w[agent.current_action])
 #         print('delta')
 #         print(delta)
-#         print('x')
-#         print(x)
+        # print('from linear_agents x:')
+        # print(x)
+        # print('from linear_agents action:')
+        # print(action)
+        # print('from linear_agents  before w:')
+        # print(self.w)
+        # print('ALPHA*delta[:, np.newaxis]*x')
+        # print(ALPHA*delta[:, np.newaxis]*x)
+        # print('delta')
+        # print(delta)
+        
         self.w += ALPHA*delta[:, np.newaxis]*x
+        # print('from linear_agents  after w:')
+        # print(self.w)
+        #print('EEEEEEEEEEEEEEEEEENTROOOOOOOOOOOO')
+
+        self.epsilon = self.epsilon*self.dec_epsilon if self.epsilon > self.min_epsilon \
+                        else self.min_epsilon
+        self.alpha = self.alpha*self.dec_alpha if self.alpha > self.min_alpha \
+                        else self.min_alpha
     
     def get_random_action(self):
         self.current_action = np.random.randint(self.n_actions)
         return self.current_action
     
-    def get_agent_action(self, s):
+    def get_agent_action(self, state):
+        # print(30*'~')
+        # print('from agent')
+        q_values = self.learn.calculate_q_values(state)
+
         if np.random.rand() < self.epsilon:
             #print('random action')
             action = np.random.choice(self.n_actions)
             self.current_action = action
+            #self.env.current_action = self.current_action
              
         else:
-            self.current_action = np.argmax(self.learn.calculate_q_values(s))
+            #print('greedy action')
+            
+            self.current_action = np.argmax(q_values)
+            #self.env.current_action = self.current_action
+        
+        self.current_qs = q_values
         
         
             

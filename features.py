@@ -1,23 +1,72 @@
 import numpy as np
 
 
+def get_x_from_s(s, features, env):
+        #f_same_col = get_if_x_in_same_col_as_y(s, env.agent_number, env.block_number)
+        #feats = np.array([f(s, self.env) for f in self.features])))
+        #print('from get_x_from_s s:')
+        #print(s)
+        feats = []
+        for f in features:
+            res = f(s, env)
+            if isinstance(res, np.ndarray):
+                #res = *res
+                feats += list(res)
+            else:
+                feats.append(res)
+        feats = np.array(feats)
+        #print('fffeats: {}'.format(feats))
+        return feats#np.array([1, f_same_col])
+
+
+
 def get_bias(state, env):
     return 1
 
 def get_last_action(state, env):
-    return env.current_action
+    #TODO: reemplazar 3 por n_actions
+    action_components = np.zeros(3 + 1) 
+    if env.last_action == -1:
+        action_components[0] = 1
+    else:
+        action_components[env.last_action + 1] = 1
+
+    return action_components
 
 #for matching to sample
 def get_model_stimuli(state, env):
+    # print('from get_model_stimuli state')
+    # print(state)
+    # print(state[env.rows - 1, :])
+    # print('np.where(state[env.rows - 1, :])')
+    # print(np.where(state[env.rows - 1, :]))
+    arr_idxs_of_nonzero_ns = np.where(state[env.rows - 1, :] != 0)[0]
+    arr_size = arr_idxs_of_nonzero_ns.size
     z = np.zeros(3)
-    z[0] = 1*(1 - env.is_model_present)
-    z[env.model_stimuli_number] = 1*env.is_model_present
+    if arr_size:
+        z[int(state[env.rows - 1, arr_idxs_of_nonzero_ns])] = 1
+        # print('arr > 0')
+        # print(arr_idxs_of_nonzero_ns)
+        # print(type(arr_idxs_of_nonzero_ns))
+        # print('z')
+        # print(z)
+    else:
+        z[0] = 1
+        # print('arr = 0')
+        # print(arr_idxs_of_nonzero_ns)
+        # print(type(arr_idxs_of_nonzero_ns))
+        # print('z')
+        # print(z)
+
+    
+    # z[0] = 1 - env.is_model_present
+    # z[env.model_stimuli_number] = 1*env.is_model_present
     return z
 
 #for matching to sample
 def get_if_last_step(state, env):
-    print('get if last step state')
-    print(state)
+    #print('get if last step state')
+    #print(state)
     if np.any(state[0, :] != 0):
         return 1
     return 0
@@ -95,20 +144,35 @@ class Learn:
     
     def set_agent(self, agent):
         self.agent = agent
-        
-    def calculate_q_values(self, state):
-        feats = self.agent.get_x_from_s(state)
-        #print('feats')
-        #print(feats)
+
+    def calculate_REINFORCE_gradient(self):
+        pass
+    def calculate_q_values(self, state, next=False):
+        # print('cqv state before')
+        # print(state)
+    
+        feats = get_x_from_s(state, self.agent.features, self.agent.env)
+
+        if next:
+            #print('next :)')
+            feats[1:5] = 0
+            feats[self.agent.env.current_action + 2] = 1
+        # print('feats')
+        # print(feats)
+        # print('self.agent.current_action')
+        # print(self.agent.current_action)
+        # print('cqv state after')
+        # print(state)
         q_values = np.dot(self.agent.w, feats)
-#         print('state')
-#         print(state)
-#         print('feats')
-#         print(feats)
-#         print('q_values')
-#         print(q_values)
-        self.agent.current_qs = q_values
+        # print('state')
+        # print(state)
+        # print('feats')
+        # print(feats)
+        # print('q_values')
+        # print(q_values)
+        #self.agent.current_qs = q_values
         return q_values
+    
     def calculate_sarsa_q_next_value(self, q_next_values):
         sarsa_next_q_value = np.max(q_next_values) if self.agent.epsilon < np.random.rand() else q_next_values[np.random.choice(self.agent.n_actions)]
         return sarsa_next_q_value
@@ -116,12 +180,15 @@ class Learn:
         total_actions_taken = np.sum(self.agent.actions_counter)
         expected_sarsa_next_q_value = np.dot(self.agent.actions_counter/total_actions_taken, q_next_values)
         return expected_sarsa_next_q_value
+    
     def calculate_q_learning_q_next_value(self, q_next_values):
         q_learning_next_q_value = np.max(q_next_values)
         return q_learning_next_q_value
+    
     def get_delta(self, state, next_state, r, done):
+        
         q_values = self.calculate_q_values(state)
-        q_next_values = self.calculate_q_values(next_state)
+        q_next_values = self.calculate_q_values(next_state, next=True)
         q_target = q_values.copy()
         if self.method == 'sarsa':
             next_q_value = self.calculate_sarsa_q_next_value(q_next_values)#np.max(q_next_values) if agent.epsilon < np.random.rand() else q_next_values[np.random.choice(agent.n_actions)]

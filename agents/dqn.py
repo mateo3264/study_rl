@@ -1,6 +1,15 @@
 import numpy as np
-from keras.models import Sequential
 
+from keras.layers import Dense, Activation
+from keras.models import Sequential, load_model
+from keras.optimizers import Adam
+from agents import base_agents
+from features import get_x_from_s
+
+
+
+
+        
 class ReplayBuffer:
     def __init__(self, input_size, n_actions, mem_size=1000000):
         self.mem_size = mem_size
@@ -12,6 +21,9 @@ class ReplayBuffer:
         self.done_memory = np.zeros(mem_size)
     
     def store_transition(self, state, action, next_state, reward, done):
+
+        state = state.flatten()
+        next_state = next_state.flatten()
         index = self.mem_counter % self.mem_size 
         self.state_memory[index] = state
         self.action_memory[index] = [0, 0, 0]
@@ -50,20 +62,17 @@ def build_dqn(n_inputs, fc1, fc2, n_actions, learning_rate=0.01):
     return model
 
 
-class Agent:
-    def __init__(self, input_size, alpha=0.001, epsilon=1, gamma=0.9, n_actions=3, batch_size=32, fc1=64, fc2=64):
-        self.input_size = input_size
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epsilon = epsilon
+class Agent(base_agents.BaseAgent):
+                 
+    def __init__(self, env, learn, features, alpha=0.1, min_alpha=0.01, dec_alpha=1, epsilon=1, dec_epsilon=0.999, min_epsilon=0.001, gamma=0.9, n_actions=3, batch_size=32, fc1=32, fc2=32):
+        super(Agent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma)
         
-        self.n_actions = n_actions
-        self.current_action = None
-        self.actions_counter = np.array([0 for _ in range(self.n_actions)])
         
-        self.q_eval = build_dqn(self.input_size, fc1, fc2, 3, alpha)
+        #self.input_size = input_size
         
-        self.replay_buffer = ReplayBuffer(input_size, n_actions)
+        self.q_eval = build_dqn(self.n_features, fc1, fc2, 3, alpha)
+        
+        self.replay_buffer = ReplayBuffer(self.n_features, n_actions)
         
         self.batch_size = batch_size 
     
@@ -72,15 +81,21 @@ class Agent:
         
     
     def remember(self, state, action, next_state, reward, done):
-        self.replay_buffer.store_transition(state, action, next_state, reward, done)
+        x = get_x_from_s(state, self.features, self.env)
+        new_x = get_x_from_s(next_state, self.features, self.env)
+        self.replay_buffer.store_transition(x, action, new_x, reward, done)
     
     def get_agent_action(self, state):
-        state = state[np.newaxis, :]
+        x = get_x_from_s(state, self.features, self.env)
+        x = x[np.newaxis, :]
+        #state = state.flatten()
+        
+        #state = state[np.newaxis, :]
         
         if np.random.rand() < self.epsilon:
             action = np.random.choice(self.n_actions)
         else:
-            q_values = self.q_eval.predict(state)
+            q_values = self.q_eval.predict(x)
             action = np.argmax(q_values)
         self.current_action = action
         return action
@@ -102,5 +117,10 @@ class Agent:
 
             q_targets[row_idxs, action_idxs] = rewards + (1 - dones)*self.gamma*np.max(q_next_values, axis=1)
 
-            _ = self.q_eval.fit(states, q_targets)
+            _ = self.q_eval.fit(states, q_targets, verbose=0)
+
+            self.epsilon = self.epsilon*self.dec_epsilon if self.epsilon > self.min_epsilon \
+                            else self.min_epsilon
+            self.alpha = self.alpha*self.dec_alpha if self.alpha > self.min_alpha \
+                            else self.min_alpha
         

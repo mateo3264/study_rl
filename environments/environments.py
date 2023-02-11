@@ -1,6 +1,8 @@
 import numpy as np
+from environments import base_env
 
-class BaseEnv:
+
+class MinEnv(base_env.BaseEnv):
     def __init__(self, rows, cols, max_n_blocks=1):
         self.rows = rows
         self.cols = cols
@@ -19,6 +21,8 @@ class BaseEnv:
         
         #self.spawn_block()
         self.block_number = 1
+
+        self.current_timestep = 0
         
         
         
@@ -94,7 +98,9 @@ class BaseEnv:
         rows, cols = np.where(new_state == self.block_number)
         self.blocks_pos = np.stack((rows, cols)).T.tolist()
 
-        reward = self.get_reward()
+        reward = self.get_reward(agent_action)
+
+        self.current_timestep
         
         return new_state, reward
     
@@ -120,19 +126,22 @@ class BaseEnv:
         self.spawn_block()
 
         
-class MatchingToSample:
+class MatchingToSample(base_env.BaseEnv):
     def __init__(self, latency=5, n_stimuli=2):
         self.rows = 2
         self.cols = n_stimuli
         self.latency = latency
+        # print('self.latency')
+        # print(self.latency)
         self.length_of_experiment = self.latency + 2
         self.current_timestep = 0
         
         #una acción que no existe. Para evitar error al multiplicar w por feats
-        self.current_action = -1
+        self.last_action = -1
+        self.current_action = None
         self.n_stimuli = n_stimuli
         
-        self.model_stimuli_poss = None
+        self.model_stimuli_poss = self.spawn_model_stimuli()
         self.comparative_stimuli_poss = []
         
         
@@ -158,47 +167,55 @@ class MatchingToSample:
         return comparative_stimuli_poss
     
     def get_reward(self, action):
-    
+        #print(f'dentro de get_reward self.current_action: {self.current_action}')
+        # print(f'dentro de get_reward model_stimuli_number: {self.model_stimuli_number}')
         if self.current_timestep == self.length_of_experiment - 1:
             if action == self.model_stimuli_number:
                 return 1
             return -1
-        elif self.current_timestep <= 1:
+        elif self.current_timestep < 1:
             if action == self.model_stimuli_number:
-                return 0.1
-        elif action == self.current_action:
+                return 1
+        elif action == self.last_action:
             return 0.1
-        return 0
+        return -1
         
         
         
     
     def update(self, state, action):
         #new_state = state.copy()
-
+        done = False
         new_state = np.zeros((self.rows, self.cols))
-        if self.current_timestep == 0:
-            
-            self.model_stimuli_poss = self.spawn_model_stimuli()
-            new_state[self.model_stimuli_poss[0], self.model_stimuli_poss[1]] = self.model_stimuli_number
 
-        elif 1 <= self.current_timestep <= self.length_of_experiment - 2:
+        #TODO: Nunca se ejecutará este codigo
+        #if self.current_timestep == 0:
+            
+         #   self.model_stimuli_poss = self.spawn_model_stimuli()
+          #  new_state[self.model_stimuli_poss[0], self.model_stimuli_poss[1]] = self.model_stimuli_number
+
+        if 0 <= self.current_timestep < self.length_of_experiment - 2:
             self.model_stimuli_pos = None
             self.is_model_present = False
-        elif self.current_timestep == self.length_of_experiment - 1:
-            print('ENTRO A COMPARATIVE')
+        elif self.current_timestep == self.length_of_experiment - 2:
+            #print('ENTRO A COMPARATIVE')
             self.comparative_stimuli_poss = np.array(self.spawn_comparative_stimuli())
             new_state[self.comparative_stimuli_poss[:, 0], self.comparative_stimuli_poss[:, 1]] = self.comparative_stimuli_numbers
-            
+        else:    
+            done = True
+        
+        
         # else:
         #     self.restart()
         reward = self.get_reward(action)
-        print('new_state')
-        print(new_state)
-        self.current_timestep +=1
-        print('current_timestamp')
-        print(self.current_timestep)
-        return new_state, reward
+
+        
+        # print('new_state')
+        # print(new_state)
+        
+        # print('current_timestamp')
+        # print(self.current_timestep)
+        return new_state, reward, done
         
     def get_grid(self):
         grid = np.zeros((self.rows, self.cols))
@@ -215,21 +232,30 @@ class MatchingToSample:
             except:
                 pass
 
-        
+        # print('desde get_grid')
+        # print(grid)
         return grid
     
     def restart(self):
-        self.current_action = -1
+        self.last_action = -1
+        self.current_action = None
         self.current_timestep = 0
         self.model_stimuli_number = np.random.choice(self.comparative_stimuli_numbers)
+        # print('self.model_stimuli_number')
+        # print(self.model_stimuli_number)
+        
         self.is_model_present = True
-        self.model_stimuli_pos = None
+        self.model_stimuli_pos = self.spawn_model_stimuli()
+        self.items_in_grid['model_stimuli'][0] = self.model_stimuli_pos
+        self.items_in_grid['model_stimuli'][1] = self.model_stimuli_number
+        # print('desde restart')
+        # print(self.model_stimuli_pos)
         self.comparative_stimuli_numbers = [s for s in range(1, self.n_stimuli + 1)]
         np.random.shuffle(self.comparative_stimuli_numbers)
         
         
         
-class EnvWithStimuli(BaseEnv):
+class EnvWithStimuli(MinEnv):
     def __init__(self, rows, cols, max_n_blocks=1):
         super().__init__(rows, cols, max_n_blocks)
         
@@ -252,7 +278,7 @@ class EnvWithStimuli(BaseEnv):
         current_program = np.random.choice([self.catch_program, self.dodge_program])
         return current_program
     
-    def get_reward(self):
+    def get_reward(self, action):
         #todo: cambiar a feature function
         
         if (np.array(self.agent_pos) == self.blocks_pos).all(-1).any():

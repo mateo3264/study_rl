@@ -46,7 +46,7 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
             learn = Learn(learning_methods[i])
             features = agent_features[i]
             #, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right 
-            agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.9997, min_alpha=0.00001, epsilon=1, dec_epsilon=0.9997, min_epsilon=0.001, gamma=0.95, n_actions=3)
+            agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.9999, min_alpha=0.00001, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.95, n_actions=3)
             
             for episode in range(n_episodes):
                 sum_rewards_in_episode = 0
@@ -78,14 +78,21 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
                         # else:
                         action = agent.get_agent_action(grid)#agent.get_random_action()#
 
+                    
                     env.current_action = action
                     agent.count_action(action)
 
                     new_grid, r, done = env.update(grid, action)
+                    
+                    
+
                     if verbose:
                         if episode % 1000 == 0:
                             print(30*'*')
-                            print(f'episode: {episode}')
+                            print('sample: ')
+                            print(sample_idx)
+                            print('agent: ')
+                            print(learning_methods[i]+str(i))
                             print(grid)
                             print(get_x_from_s(grid, agent.features, env))
                             print('action: ', action)
@@ -146,33 +153,3 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
 
     return samples
 
-
-env = MatchingToSample(latency=20, n_stimuli=5)
-features = [get_bias, get_model_stimuli, get_if_last_step]
-features2 = [get_bias, get_last_action, get_model_stimuli, get_if_last_step]
-samples = run_experiment(env, 2, [features, features2], ['sarsa', 'sarsa'], sample_size=10, n_episodes=3000, verbose=True)
-#samples = run_experiment(env, 1, [features], ['q-learning'], sample_size=2, n_episodes=10000)
-
-print('samples:')
-print(samples)
-sarsa_sample = np.array(samples['sarsa0'])
-q_learning_sample = np.array(samples['sarsa1'])
-q_learning_sample
-sarsa_mean = sarsa_sample.mean()
-q_learning_mean = q_learning_sample.mean()
-
-sarsa_sample_std = sarsa_sample.std(ddof=1)
-q_learning_sample_std = q_learning_sample.std(ddof=1)
-print('sarsa_mean: ', sarsa_mean)
-print('q_learning_mean: ', q_learning_mean)
-print('sarsa_sample_std: ', sarsa_sample_std)
-print('q_learning_sample_std: ', q_learning_sample_std)
-
-
-standard_error = np.sqrt(((q_learning_sample_std**2)/len(q_learning_sample)) + ((sarsa_sample_std**2)/len(sarsa_sample)))
-t_value = (q_learning_mean - sarsa_mean)/standard_error
-print('t_value: ', t_value)
-print('critical value: ', 2.262)
-upper_range = q_learning_mean - sarsa_mean + 2.262*standard_error
-lower_range = q_learning_mean - sarsa_mean - 2.262*standard_error
-print('confidence interval: ', lower_range, upper_range)

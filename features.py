@@ -157,8 +157,9 @@ class Learn:
         feats = get_x_from_s(state, self.agent.features, self.agent.env)
 
         if next:
-            #print('next :)')
-            feats[1:5] = 0
+#            print('next')
+            #TODO: se asume que la feature get_last_action está de segundas y después de la feature get_bias
+            feats[1:self.agent.env.n_stimuli + 3] = 0
             feats[self.agent.env.current_action + 2] = 1
         # print('feats')
         # print(feats)

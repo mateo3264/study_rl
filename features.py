@@ -24,8 +24,11 @@ def get_bias(state, env):
     return 1
 
 def get_last_action(state, env):
-    #TODO: reemplazar 3 por n_actions
-    action_components = np.zeros(3 + 1) 
+    # print('env.n_stimuli')
+    # print(env.n_stimuli)
+    action_components = np.zeros(env.n_stimuli + 2) 
+
+
     if env.last_action == -1:
         action_components[0] = 1
     else:
@@ -42,7 +45,7 @@ def get_model_stimuli(state, env):
     # print(np.where(state[env.rows - 1, :]))
     arr_idxs_of_nonzero_ns = np.where(state[env.rows - 1, :] != 0)[0]
     arr_size = arr_idxs_of_nonzero_ns.size
-    z = np.zeros(3)
+    z = np.zeros(env.n_stimuli + 1)
     if arr_size:
         z[int(state[env.rows - 1, arr_idxs_of_nonzero_ns])] = 1
         # print('arr > 0')

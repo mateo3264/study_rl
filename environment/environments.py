@@ -1,5 +1,5 @@
 import numpy as np
-from environments import base_env
+from environment import base_env
 
 
 class MinEnv(base_env.BaseEnv):
@@ -140,6 +140,9 @@ class MatchingToSample(base_env.BaseEnv):
         self.last_action = -1
         self.current_action = None
         self.n_stimuli = n_stimuli
+        print('self.n_stimuli')
+        print(self.n_stimuli)
+
         
         self.model_stimuli_poss = self.spawn_model_stimuli()
         self.comparative_stimuli_poss = []

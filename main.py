@@ -1,4 +1,4 @@
-from environments.environments import EnvWithStimuli, MatchingToSample
+from environment.environments import EnvWithStimuli, MatchingToSample
 from agents.linear_agents import FeatAgent
 from agents.dqn import Agent
 from features import *
@@ -19,7 +19,7 @@ env = MatchingToSample(latency=5)
 learn = Learn('sarsa')
 
 #, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right 
-agent = FeatAgent(env, learn, [get_bias, get_last_action, get_model_stimuli, get_if_last_step], alpha=0.00001, dec_alpha=1, min_alpha=0.00001, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.95, n_actions=3)
+agent = FeatAgent(env, learn, [get_bias, get_last_action, get_model_stimuli, get_if_last_step], alpha=0.00001, dec_alpha=1, min_alpha=0.00001, epsilon=0.01, dec_epsilon=1, min_epsilon=0.001, gamma=0.95, n_actions=3)
 #agent = FeatAgent(env, learn, [get_bias, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right], alpha=1, dec_alpha=0.99995, min_alpha=0.00001, epsilon=1, dec_epsilon=0.99995, gamma=0.95, n_actions=3) 
 #agent = Agent(env, learn, [get_bias, get_last_action, get_model_stimuli, get_if_last_step], alpha=0.1, dec_alpha=0.9995, min_alpha=0.00001, gamma=0.95, n_actions=3, epsilon=0.01, dec_epsilon=1, min_epsilon=0.001, batch_size=32)
 timesteps_record = []

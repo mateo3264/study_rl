@@ -109,3 +109,7 @@ class FeatAgent(base_agents.BaseAgent):
             
         return self.current_action
 
+    def restart(self):
+        self.current_action = None
+        
+

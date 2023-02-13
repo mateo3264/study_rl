@@ -13,7 +13,7 @@ class BaseAgent(ABC):
         print('self.n_features')
         print(self.n_features)
         
-        self.n_actions = n_actions
+        self.n_actions = self.env.n_stimuli + 1
         self.current_action = None
         self.actions_counter = np.array([0 for _ in range(self.n_actions)])
         
@@ -54,4 +54,4 @@ class BaseAgent(ABC):
         pass
     
     def restart(self):
-        self.current_action = None
+        pass

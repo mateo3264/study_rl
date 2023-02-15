@@ -51,3 +51,4 @@ docs/_build/
 
 #repaso
 study.py
+agent_params.npy

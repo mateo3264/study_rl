@@ -21,7 +21,6 @@ class ReplayBuffer:
         self.done_memory = np.zeros(mem_size)
     
     def store_transition(self, state, action, next_state, reward, done):
-
         state = state.flatten()
         next_state = next_state.flatten()
         index = self.mem_counter % self.mem_size 
@@ -69,8 +68,8 @@ class Agent(base_agents.BaseAgent):
         
         
         #self.input_size = input_size
-        
-        self.q_eval = build_dqn(self.n_features, fc1, fc2, 3, alpha)
+
+        self.q_eval = build_dqn(self.n_features, fc1, fc2, self.n_actions, alpha)
         
         self.replay_buffer = ReplayBuffer(self.n_features, n_actions)
         

@@ -9,6 +9,7 @@ import seaborn as sns
 from metrics import *
 from collections import deque
 import time
+import pandas as pd
 
 
 #env = EnvWithStimuli(env_rows, env_cols, 17)
@@ -45,8 +46,15 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
             record = deque(maxlen=3)
             learn = Learn(learning_methods[i])
             features = agent_features[i]
-            #, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right 
-            agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.9999, min_alpha=0.00001, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.95, n_actions=3)
+            terminal_rewards = {'r+':0, 'r-':0}
+            if learning_methods[i] == 'dqn':
+                
+                agent = Agent(env, learn, features, alpha=0.1, dec_alpha=0.9995, min_alpha=0.00001, gamma=0.95, n_actions=3, epsilon=0.01, dec_epsilon=1, min_epsilon=0.001, batch_size=32)
+            else:
+                
+                
+                #, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right 
+                agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.99994, min_alpha=0.00001, epsilon=1, dec_epsilon=0.99994, min_epsilon=0.001, gamma=0.95, n_actions=3)
             
             for episode in range(n_episodes):
                 sum_rewards_in_episode = 0
@@ -99,6 +107,14 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
                             print(new_grid)
                             print(get_x_from_s(new_grid, agent.features, env))
                             print('reward: ', r)
+                    if done:
+                        print('r')
+                        print(r)
+                        if r>0:
+                            terminal_rewards['r+'] +=1
+                        else:
+                            terminal_rewards['r-'] +=1
+                        print(terminal_rewards)
 
                     agent.update_w(grid, action,  new_grid, r, done)
                     sum_rewards_in_episode += r
@@ -149,6 +165,12 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
     ax[1, 0].set_title('Total rewards')
     sns.lineplot(running_avg_total_rewards, ax=ax[1, 1])
     ax[1, 1].set_title('Running avg total rewards')
+    plt.show()
+
+    samples_pd = pd.DataFrame(samples)
+    plt.figure(figsize=(10, 10))
+    sns.boxplot(data=samples_pd)
+
     plt.show()
 
     return samples

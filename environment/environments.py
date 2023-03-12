@@ -127,13 +127,15 @@ class MinEnv(base_env.BaseEnv):
 
         
 class MatchingToSample(base_env.BaseEnv):
-    def __init__(self, latency=5, n_stimuli=2):
+    def __init__(self, latency=5, model_steps=2, comparative_steps=2, n_stimuli=2):
         self.rows = 2
         self.cols = n_stimuli
         self.latency = latency
+        self.model_steps = model_steps
+        self.comparative_steps = comparative_steps
         # print('self.latency')
         # print(self.latency)
-        self.length_of_experiment = self.latency + 2
+        self.length_of_experiment = self.model_steps + self.latency + self.comparative_steps
         self.current_timestep = 0
         
         #una acción que no existe. Para evitar error al multiplicar w por feats
@@ -157,6 +159,11 @@ class MatchingToSample(base_env.BaseEnv):
                                 "model_stimuli":[self.model_stimuli_poss, self.model_stimuli_number],
                                 "comparative_stimuli":[self.comparative_stimuli_poss, self.comparative_stimuli_numbers]
                             }
+
+        self.tact_reward_discount = 1
+        self.autoechoic_reward_discount = 1
+
+        
         
     def spawn_model_stimuli(self):
         model_stimuli_pos = (self.rows - 1, self.cols//2)
@@ -178,18 +185,31 @@ class MatchingToSample(base_env.BaseEnv):
             return -1
         elif self.current_timestep < 1:
             if action == self.model_stimuli_number:
-                return 1
+                self.tact_reward_discount *= .999
+                
+                if self.tact_reward_discount < 0.01:
+                    self.tact_reward_discount = 0
+                
+                return 1*self.tact_reward_discount
+            
         elif action == self.last_action:
-            return 0.1
+            self.autoechoic_reward_discount *= .9999
+            if self.autoechoic_reward_discount < 0.01:
+                self.autoechoic_reward_discount = 0
+            
+            return 0.1*self.autoechoic_reward_discount
+        
         return -1
-        
-        
-        
-    
+           
     def update(self, state, action):
         #new_state = state.copy()
         done = False
-        new_state = np.zeros((self.rows, self.cols))
+        if self.current_timestep >= self.length_of_experiment - 1:
+            done = True 
+            reward = self.get_reward(action)
+            return None, reward, done
+
+        new_state = state.copy()
 
         #TODO: Nunca se ejecutará este codigo
         #if self.current_timestep == 0:
@@ -197,15 +217,16 @@ class MatchingToSample(base_env.BaseEnv):
          #   self.model_stimuli_poss = self.spawn_model_stimuli()
           #  new_state[self.model_stimuli_poss[0], self.model_stimuli_poss[1]] = self.model_stimuli_number
 
-        if 0 <= self.current_timestep < self.length_of_experiment - 2:
+        if self.model_steps - 1 <= self.current_timestep < self.length_of_experiment - 2 - self.comparative_steps:
             self.model_stimuli_pos = None
             self.is_model_present = False
-        elif self.current_timestep == self.length_of_experiment - 2:
+            new_state = np.zeros((self.rows, self.cols))
+        elif self.length_of_experiment - 2 - self.comparative_steps < self.current_timestep:
+            new_state = np.zeros((self.rows, self.cols))
             #print('ENTRO A COMPARATIVE')
             self.comparative_stimuli_poss = np.array(self.spawn_comparative_stimuli())
             new_state[self.comparative_stimuli_poss[:, 0], self.comparative_stimuli_poss[:, 1]] = self.comparative_stimuli_numbers
-        else:    
-            done = True
+     
         
         
         # else:
@@ -255,6 +276,8 @@ class MatchingToSample(base_env.BaseEnv):
         # print(self.model_stimuli_pos)
         self.comparative_stimuli_numbers = [s for s in range(1, self.n_stimuli + 1)]
         np.random.shuffle(self.comparative_stimuli_numbers)
+        self.done = False
+        
         
         
         

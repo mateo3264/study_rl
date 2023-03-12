@@ -52,3 +52,7 @@ docs/_build/
 #repaso
 study.py
 agent_params.npy
+
+
+#data made in each experiment
+terminal_rewards.txt

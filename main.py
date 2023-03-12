@@ -5,12 +5,12 @@ from scipy.stats import t
 
 
 if __name__ == '__main__':
-    env = MatchingToSample(latency=5, n_stimuli=2)
+    env = MatchingToSample(latency=0, n_stimuli=10)
     features = [get_bias, get_last_action, get_model_stimuli, get_if_last_step]
     features2 = [get_bias, get_last_action, get_model_stimuli, get_if_last_step]
     sample_size = 15
     #samples = run_experiment(env, 2, [features, features2], ['sarsa', 'q-learning'], sample_size=sample_size, n_episodes=15000, verbose=True)
-    samples = run_experiment(env, 1, [features], ['dqn'], sample_size=2, n_episodes=10000)
+    samples = run_experiment(env, 1, [features], ['dqn'], sample_size=2, n_episodes=20000)
 
     print('samples:')
     print(samples)

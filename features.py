@@ -192,7 +192,9 @@ class Learn:
     def get_delta(self, state, next_state, r, done):
         
         q_values = self.calculate_q_values(state)
-        q_next_values = self.calculate_q_values(next_state, next=True)
+        q_next_values = np.zeros(state.shape[1]+1)
+        if not done:
+            q_next_values = self.calculate_q_values(next_state, next=True)
         q_target = q_values.copy()
         if self.method == 'sarsa':
             next_q_value = self.calculate_sarsa_q_next_value(q_next_values)#np.max(q_next_values) if agent.epsilon < np.random.rand() else q_next_values[np.random.choice(agent.n_actions)]

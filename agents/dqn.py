@@ -12,6 +12,7 @@ from features import get_x_from_s
         
 class ReplayBuffer:
     def __init__(self, input_size, n_actions, mem_size=1000000):
+        self.n_actions = n_actions
         self.mem_size = mem_size
         self.mem_counter = 0
         self.state_memory = np.zeros((mem_size, input_size))
@@ -22,12 +23,13 @@ class ReplayBuffer:
     
     def store_transition(self, state, action, next_state, reward, done):
         state = state.flatten()
-        next_state = next_state.flatten()
         index = self.mem_counter % self.mem_size 
         self.state_memory[index] = state
-        self.action_memory[index] = [0, 0, 0]
+        self.action_memory[index] = [0]*self.n_actions
         self.action_memory[index][action] = 1
-        self.next_state_memory[index] = next_state
+        if not done:
+            next_state = next_state.flatten()
+            self.next_state_memory[index] = next_state
         self.reward_memory[index] = reward
         self.done_memory[index] = done
         
@@ -63,7 +65,7 @@ def build_dqn(n_inputs, fc1, fc2, n_actions, learning_rate=0.01):
 
 class Agent(base_agents.BaseAgent):
                  
-    def __init__(self, env, learn, features, alpha=0.1, min_alpha=0.01, dec_alpha=1, epsilon=1, dec_epsilon=0.999, min_epsilon=0.001, gamma=0.9, n_actions=3, batch_size=32, fc1=32, fc2=32):
+    def __init__(self, env, learn, features, alpha=0.1, min_alpha=0.01, dec_alpha=1, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.9, n_actions=3, batch_size=32, fc1=16, fc2=16):
         super(Agent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma)
         
         
@@ -71,7 +73,7 @@ class Agent(base_agents.BaseAgent):
 
         self.q_eval = build_dqn(self.n_features, fc1, fc2, self.n_actions, alpha)
         
-        self.replay_buffer = ReplayBuffer(self.n_features, n_actions)
+        self.replay_buffer = ReplayBuffer(self.n_features, self.n_actions)
         
         self.batch_size = batch_size 
     
@@ -81,10 +83,14 @@ class Agent(base_agents.BaseAgent):
     
     def remember(self, state, action, next_state, reward, done):
         x = get_x_from_s(state, self.features, self.env)
-        new_x = get_x_from_s(next_state, self.features, self.env)
+        new_x = 0
+        if not done:
+            new_x = get_x_from_s(next_state, self.features, self.env)
         self.replay_buffer.store_transition(x, action, new_x, reward, done)
     
     def get_agent_action(self, state):
+        print('dqn state')
+        print(state)
         x = get_x_from_s(state, self.features, self.env)
         x = x[np.newaxis, :]
         #state = state.flatten()

@@ -26,6 +26,9 @@ class REINFORCEAgent(base_agents.BaseAgent):
         pass
 
 
+
+
+
 class FeatAgent(base_agents.BaseAgent):
     def __init__(self, env, learn, features, n_actions= 3, alpha=0.1, dec_alpha=1, min_alpha=0.01, epsilon=0.1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.9):
         super(FeatAgent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma)
@@ -35,11 +38,11 @@ class FeatAgent(base_agents.BaseAgent):
     def count_action(self, action):
         self.actions_counter[action] += 1
 
-    def calculate_v(self, s):
-        x = get_x_from_s(s, self.features, self.env)
+    # def calculate_v(self, s):
+    #     x = get_x_from_s(s, self.features, self.env)
         
         
-        return np.dot(self.w, x)
+        # return np.dot(self.w, x)
 
     def update_w(self, state, action, next_state, reward, done):
         #print('update_w state before')
@@ -112,4 +115,50 @@ class FeatAgent(base_agents.BaseAgent):
     def restart(self):
         self.current_action = None
         
+
+class FeatEligibilityTracesAgent(FeatAgent):
+    def __init__(self, env, learn, features, n_actions= 3, alpha=0.1, dec_alpha=1, min_alpha=0.01, epsilon=0.1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.9, lambd=0.9):
+       super(FeatEligibilityTracesAgent, self).__init__(env, learn, features, n_actions, alpha, dec_alpha, min_alpha, epsilon, dec_epsilon, min_epsilon, gamma) 
+       self.lambd = lambd
+       self.z = np.zeros(self.n_features)
+       print(self.z)
+    
+    def update_w(self, state, action, next_state, reward, done):
+        
+        x = get_x_from_s(state, self.features, self.env)
+        print('xx3')
+        print(x)
+        delta = reward
+        for i, f in enumerate(x):
+            if f != 0:
+                print(i, f)
+                print('self.w[action, i]')
+                print(self.w[action, i])
+                delta = delta - self.w[action, i]
+                self.z[i] = 1
+        #delta = self.learn.get_delta(state, next_state, reward, done)
+        # 
+        # delta = delta - self.w[action]
+
+        
+        self.w += ALPHA*delta[:, np.newaxis]*x
+
+
+        self.epsilon = self.epsilon*self.dec_epsilon if self.epsilon > self.min_epsilon \
+                        else self.min_epsilon
+        self.alpha = self.alpha*self.dec_alpha if self.alpha > self.min_alpha \
+                        else self.min_alpha
+
+        for i, f in enumerate(x):
+            if f > 0:
+                self.z[i] = 1
+
+
+    
+    def restart(self):
+        self.current_action = None
+        self.z = np.zeros(self.n_features)
+
+
+#class ElegibilityTracesAgent:
 

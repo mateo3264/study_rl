@@ -12,6 +12,15 @@ import time
 import pandas as pd
 
 
+#import matplotlib.animation as animation
+
+
+
+
+
+
+
+
 #env = EnvWithStimuli(env_rows, env_cols, 17)
 
 
@@ -32,6 +41,7 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
         #     [0, 0, 0, 0, 1, 0, 0, 1, 1]
         #      ])
         sample = []
+        
         for sample_idx in range(sample_size):
             print('new element in sample')
             #agent = FeatAgent(env, learn, [get_bias, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right], alpha=1, dec_alpha=0.99995, min_alpha=0.00001, epsilon=1, dec_epsilon=0.99995, gamma=0.95, n_actions=3) 
@@ -47,14 +57,17 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
             learn = Learn(learning_methods[i])
             features = agent_features[i]
             terminal_rewards = {'r+':0, 'r-':0}
+            env.tact_reward_discount = 1
+            env.autoechoic_reward_discount = 1
+
             if learning_methods[i] == 'dqn':
                 
-                agent = Agent(env, learn, features, alpha=0.1, dec_alpha=0.9995, min_alpha=0.00001, gamma=0.95, n_actions=3, epsilon=0.01, dec_epsilon=1, min_epsilon=0.001, batch_size=32)
+                agent = Agent(env, learn, features, alpha=0.0001, dec_alpha=0.999, min_alpha=0.00001, gamma=0.95, n_actions=3, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, batch_size=32)
             else:
                 
                 
                 #, get_if_x_in_same_col_as_y, get_distance_between_agent_and_block_based_feature, get_distance_to_nearest_hole_left, get_distance_to_nearest_hole_right 
-                agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.99994, min_alpha=0.00001, epsilon=1, dec_epsilon=0.99994, min_epsilon=0.001, gamma=0.95, n_actions=3)
+                agent = FeatAgent(env, learn, features, alpha=0.1, dec_alpha=0.9999, min_alpha=0.00001, epsilon=1, dec_epsilon=0.9999, min_epsilon=0.001, gamma=0.95, n_actions=3)
             
             for episode in range(n_episodes):
                 sum_rewards_in_episode = 0
@@ -95,27 +108,53 @@ def run_experiment(env, n_agents, agent_features, learning_methods, sample_size=
                     
 
                     if verbose:
-                        if episode % 1000 == 0:
+                        if episode % 10 == 0:
+                            
                             print(30*'*')
                             print('sample: ')
                             print(sample_idx)
+
+                            print('episode')
+                            print(episode)
+
+                            print('timesteps')
+                            print(timesteps)
+
+                            print('agent.epsilon')
+                            print(agent.epsilon)
+
+                            print('agent.alpha')
+                            print(agent.alpha)
+
                             print('agent: ')
                             print(learning_methods[i]+str(i))
                             print(grid)
                             print(get_x_from_s(grid, agent.features, env))
                             print('action: ', action)
+                            
                             print(new_grid)
-                            print(get_x_from_s(new_grid, agent.features, env))
+                            if not done:
+                                print(get_x_from_s(new_grid, agent.features, env))
                             print('reward: ', r)
+                            print(terminal_rewards)
+                            print('env.tact_reward_discount')
+                            print(env.tact_reward_discount)
+                            print('env.autoechoic_reward_discount')
+                            print(env.autoechoic_reward_discount)
                     if done:
-                        print('r')
-                        print(r)
+                        # print('r')
+                        # print(r)
                         if r>0:
                             terminal_rewards['r+'] +=1
                         else:
                             terminal_rewards['r-'] +=1
-                        print(terminal_rewards)
-
+                        with open('terminal_rewards.txt', 'a') as f:
+                            if r>0:
+                                f.write(f'1,0,{agent.epsilon}'+'\n')
+                            else:
+                                f.write(f'0,1,{agent.epsilon}'+'\n')
+                        # print(terminal_rewards)
+                    
                     agent.update_w(grid, action,  new_grid, r, done)
                     sum_rewards_in_episode += r
                     add_record(record, grid, action)
